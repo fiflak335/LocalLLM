@@ -14,8 +14,6 @@
 		B8A1F1A12A1B2C3D4E5F6A83 /* DataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A1F1A12A1B2C3D4E5F6A84 /* DataModels.swift */; };
 		B8A1F1A12A1B2C3D4E5F6A85 /* LLMManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A1F1A12A1B2C3D4E5F6A86 /* LLMManager.swift */; };
 		B8A1F1A12A1B2C3D4E5F6A87 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A1F1A12A1B2C3D4E5F6A88 /* ModelManager.swift */; };
-		B8A1F1A12A1B2C3D4E5F6A89 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = B8A1F1A12A1B2C3D4E5F6A8A /* Info.plist */; };
-		B8A1F1A12A1B2C3D4E5F6A8B /* LocalLLM.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = B8A1F1A12A1B2C3D4E5F6A8C /* LocalLLM.entitlements */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -163,8 +161,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B8A1F1A12A1B2C3D4E5F6A89 /* Info.plist in Resources */,
-				B8A1F1A12A1B2C3D4E5F6A8B /* LocalLLM.entitlements in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,7 +177,7 @@
 				B8A1F1A12A1B2C3D4E5F6A83 /* SettingsView.swift in Sources */,
 				B8A1F1A12A1B2C3D4E5F6A85 /* DataModels.swift in Sources */,
 				B8A1F1A12A1B2C3D4E5F6A87 /* LLMManager.swift in Sources */,
-				B8A1F1A12A1B2C3D4E5F6A89 /* ModelManager.swift in Sources */,
+				B8A1F1A12A1B2C3D4E5F6A88 /* ModelManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
