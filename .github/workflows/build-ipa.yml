@@ -21,6 +21,10 @@ env:
   BUILD_CONFIGURATION: Release
   EXPORT_METHOD: ad-hoc
 
+defaults:
+  run:
+    working-directory: ${{ github.workspace }}
+
 jobs:
   build:
     name: Build IPA
@@ -47,7 +51,6 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cd ${{ env.PROJECT_NAME }}
           xcodebuild -resolvePackageDependencies \
             -project ${{ env.PROJECT_NAME }}.xcodeproj \
             -scheme ${{ env.SCHEME_NAME }} \
@@ -81,7 +84,7 @@ jobs:
       - name: Build and Archive
         run: |
           xcodebuild archive \
-            -project ${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.xcodeproj \
+            -project ${{ env.PROJECT_NAME }}.xcodeproj \
             -scheme ${{ env.SCHEME_NAME }} \
             -configuration ${{ env.BUILD_CONFIGURATION }} \
             -archivePath build/${{ env.PROJECT_NAME }}.xcarchive \
@@ -89,8 +92,7 @@ jobs:
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
             DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_SPECIFIER }}" \
-            OTHER_CODE_SIGN_FLAGS="--keychain ~/Library/Keychains/build.keychain-db"
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_SPECIFIER }}"
       
       - name: Export IPA
         run: |
