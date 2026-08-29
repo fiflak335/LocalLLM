@@ -40,6 +40,16 @@ jobs:
         with:
           fetch-depth: 0
       
+      - name: Debug - List files
+        run: |
+          echo "=== github.workspace ==="
+          ls -la ${{ github.workspace }}
+          echo "=== github.workspace/LocalLLM ==="
+          ls -la ${{ github.workspace }}/LocalLLM
+          echo "=== pwd ==="
+          pwd
+          ls -la
+      
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
