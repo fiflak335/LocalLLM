@@ -1,0 +1,212 @@
+name: Build and Release IPA
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  PROJECT_NAME: LocalLLM
+  SCHEME_NAME: LocalLLM
+  BUILD_CONFIGURATION: Release
+  EXPORT_METHOD: ad-hoc
+
+jobs:
+  build:
+    name: Build IPA
+    runs-on: macos-14
+    timeout-minutes: 60
+    
+    outputs:
+      ipa_path: ${{ steps.find_ipa.outputs.ipa_path }}
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+      
+      - name: Show Xcode version
+        run: xcodebuild -version
+      
+      - name: Install dependencies
+        run: |
+          cd ${{ env.PROJECT_NAME }}
+          xcodebuild -resolvePackageDependencies \
+            -project ${{ env.PROJECT_NAME }}.xcodeproj \
+            -scheme ${{ env.SCHEME_NAME }} \
+            -configuration ${{ env.BUILD_CONFIGURATION }}
+      
+      - name: Create ExportOptions.plist
+        run: |
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>${{ env.EXPORT_METHOD }}</string>
+              <key>teamID</key>
+              <string>${{ secrets.DEVELOPMENT_TEAM }}</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+      
+      - name: Build and Archive
+        run: |
+          xcodebuild archive \
+            -project ${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.xcodeproj \
+            -scheme ${{ env.SCHEME_NAME }} \
+            -configuration ${{ env.BUILD_CONFIGURATION }} \
+            -archivePath build/${{ env.PROJECT_NAME }}.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_SPECIFIER }}" \
+            OTHER_CODE_SIGN_FLAGS="--keychain ~/Library/Keychains/build.keychain-db"
+      
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/${{ env.PROJECT_NAME }}.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist
+      
+      - name: Find IPA
+        id: find_ipa
+        run: |
+          IPA_PATH=$(find build/ipa -name "*.ipa" | head -1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "IPA not found!"
+            exit 1
+          fi
+          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
+          echo "Found IPA: $IPA_PATH"
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version }}-ipa
+          path: ${{ steps.find_ipa.outputs.ipa_path }}
+          retention-days: 90
+      
+      - name: Create Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          name: ${{ env.PROJECT_NAME }} v${{ steps.version.outputs.version }}
+          body: |
+            ## LocalLLM v${{ steps.version.outputs.version }}
+            
+            Local LLM inference on iPhone using MLX Swift with Metal acceleration.
+            
+            ### Features
+            - 🤖 Run LLMs locally (Llama, Qwen, Moondream, etc.)
+            - ⚡ Metal GPU acceleration via MLX Swift
+            - 📁 Import .gguf models from Files app
+            - ⚙️ Advanced generation parameters
+            - 💬 Markdown-supported chat interface
+            - 💾 Persistent chat history with SwiftData
+            - 🧠 Memory optimization for iOS
+            
+            ### Installation
+            1. Download the `.ipa` file from Assets below
+            2. Install via AltStore, Sideloadly, or Xcode
+            3. Import a `.gguf` model from the Files app
+            4. Start chatting offline!
+            
+            ### Supported Models
+            - Llama 3.2 (1B, 3B) - 4-bit quantized
+            - Qwen 2.5 (0.5B, 1.5B, 3B)
+            - Moondream 2 (vision)
+            - Any GGUF model compatible with MLX
+            
+            ### Requirements
+            - iOS 17.0+
+            - iPhone with A14 Bionic or later (recommended)
+            - 2GB+ free storage for models
+          draft: false
+          prerelease: false
+          files: ${{ steps.find_ipa.outputs.ipa_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create Release (Manual Dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: ${{ env.PROJECT_NAME }} v${{ steps.version.outputs.version }}
+          body: |
+            ## LocalLLM v${{ steps.version.outputs.version }}
+            
+            Local LLM inference on iPhone using MLX Swift with Metal acceleration.
+            
+            ### Installation
+            1. Download the `.ipa` file from Assets below
+            2. Install via AltStore, Sideloadly, or Xcode
+            3. Import a `.gguf` model from the Files app
+            4. Start chatting offline!
+          draft: false
+          prerelease: false
+          files: ${{ steps.find_ipa.outputs.ipa_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Notify
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          STATUS="${{ needs.build.result }}"
+          VERSION="${{ needs.build.outputs.version }}"
+          IPA="${{ needs.build.outputs.ipa_path }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            echo "✅ Build successful! Version: $VERSION"
+            echo "IPA: $IPA"
+          else
+            echo "❌ Build failed!"
+            exit 1
+          fi
